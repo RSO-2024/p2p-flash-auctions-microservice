@@ -3,6 +3,10 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import fs from 'fs';
 import path from 'path';
+
+import { requireRole, verifyJWT,  } from './middleware/authorization';
+
+
 const app: Application = express();
 
 const swaggerOptions = {
@@ -35,12 +39,15 @@ const loadRoutes = (dir: string) => {
     });
 };
 
-loadRoutes(path.join(__dirname, 'routes'));
-
 
 loadRoutes(path.join(__dirname, 'routes'));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+// A function that uses authentication middleware
+app.get('/admin-resource', verifyJWT, requireRole('admin'), (req, res: Response) => {
+    res.send('Access granted to admin');
+});
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Hello World!');

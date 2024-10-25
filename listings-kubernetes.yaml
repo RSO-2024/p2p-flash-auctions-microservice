@@ -1,0 +1,96 @@
+# Supabase Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: listings-secrets
+type: Opaque
+data:
+  SUPABASE_URL: <base64-encoded-supabase-url>
+  SUPABASE_KEY: <base64-encoded-supabase-key>
+  SUPABASE_JWKS_URI: <base64-encoded-supabase-jwks-uri>
+
+# Optional ConfigMap for Non-Sensitive Configurations
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: listings-config
+data:
+  SUPABASE_AUDIENCE: "your-audience" # Add other non-sensitive configurations here
+
+# Node.js Express Deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: listings-microservice
+  labels:
+    app: listings-microservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: listings-microservice
+  template:
+    metadata:
+      labels:
+        app: listings-microservice
+    spec:
+      containers:
+        - name: listings-microservice-container
+          image: listings-microservice-image:latest  # Replace with your actual image
+          ports:
+            - containerPort: 3000
+          env:
+            # Supabase secrets as environment variables
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: listings-secrets
+                  key: SUPABASE_URL
+            - name: SUPABASE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: listings-secrets
+                  key: SUPABASE_KEY
+            - name: SUPABASE_JWKS_URI
+              valueFrom:
+                secretKeyRef:
+                  name: listings-secrets
+                  key: SUPABASE_JWKS_URI
+
+            # ConfigMap environment variables for non-sensitive data
+            - name: SUPABASE_AUDIENCE
+              valueFrom:
+                configMapKeyRef:
+                  name: listings-config
+                  key: SUPABASE_AUDIENCE
+
+          # Example liveness and readiness probes
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+# Expose the Deployment as a Service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: listings-microservice-service
+spec:
+  type: ClusterIP
+  selector:
+    app: listings-microservice
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
