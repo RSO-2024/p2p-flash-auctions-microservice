@@ -4,27 +4,46 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import fs from 'fs';
 import path from 'path';
 
-import { requireRole, verifyJWT,  } from './middleware/authorization';
+import sql from './database/db';
 
+import { requireRole, verifyJWT } from './middleware/authorization';
 
 const app: Application = express();
+
+
+// Database test connection
+(async () => {
+    try {
+      // Test query
+      const result = await sql`SELECT 'Database connection successful!' AS message`;
+      console.log(result[0].message); // Output: Database connection successful!
+    } catch (error) {
+      console.error("Error connecting to the database:", error);
+    } finally {
+      sql.end(); // Close the connection
+    }
+})();
+
 
 const swaggerOptions = {
     swaggerDefinition: {
         openapi: '3.0.0',
         info: {
-            title: 'My Microservice API',
-            version: '1.0.0',
+            title: 'Listings Microservice API',
+            version: '0.0.1',
             description: 'API documentation',
         },
     },
-    apis: ['./src/routes/*.ts'],
+    apis: ['./src/routes/*.ts', './src/routes/**/*.ts'],
 };
 
+// Create Swagger UI documentation
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 
 app.use(express.json());
 
+
+// Load routes
 const loadRoutes = (dir: string) => {
     fs.readdirSync(dir).forEach((file) => {
         const filePath = path.join(dir, file);
@@ -38,9 +57,34 @@ const loadRoutes = (dir: string) => {
         }
     });
 };
-
-
 loadRoutes(path.join(__dirname, 'routes'));
+
+// Setup graceful shutdown for PostgreSQL
+const shutdownGracefully = () => {
+    console.log("Shutting down gracefully...");
+  
+    // Close DB connection
+    sql.end().then(() => {
+      console.log("Database connection closed.");
+      process.exit(0);
+    }).catch((err) => {
+      console.error("Error closing DB connection", err);
+      process.exit(1);
+    });
+};
+
+// Listen for termination signals
+process.on("SIGINT", shutdownGracefully); 
+process.on("SIGTERM", shutdownGracefully);
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception", err);
+  shutdownGracefully();
+});
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection", reason);
+  shutdownGracefully();
+});
+
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
