@@ -19,8 +19,6 @@ const app: Application = express();
       console.log(result[0].message); // Output: Database connection successful!
     } catch (error) {
       console.error("Error connecting to the database:", error);
-    } finally {
-      sql.end(); // Close the connection
     }
 })();
 
@@ -53,7 +51,13 @@ const loadRoutes = (dir: string) => {
             loadRoutes(filePath);
         } else if (file.endsWith('.ts') || file.endsWith('.js')) {
             const route = require(filePath).default;
-            app.use('/api', route);
+
+            const relativePath = path
+                .dirname(filePath)
+                .replace(path.join(__dirname, 'routes'), '')
+                .replace(/\\/g, '/');
+            
+            app.use(`/api${relativePath}`, route);
         }
     });
 };
@@ -74,16 +78,16 @@ const shutdownGracefully = () => {
 };
 
 // Listen for termination signals
-process.on("SIGINT", shutdownGracefully); 
-process.on("SIGTERM", shutdownGracefully);
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught exception", err);
-  shutdownGracefully();
-});
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection", reason);
-  shutdownGracefully();
-});
+// process.on("SIGINT", shutdownGracefully); 
+// process.on("SIGTERM", shutdownGracefully);
+// process.on("uncaughtException", (err) => {
+//   console.error("Uncaught exception", err);
+//   shutdownGracefully();
+// });
+// process.on("unhandledRejection", (reason, promise) => {
+//   console.error("Unhandled Rejection", reason);
+//   shutdownGracefully();
+// });
 
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

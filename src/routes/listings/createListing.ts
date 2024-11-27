@@ -1,5 +1,8 @@
 import { Router } from "express";
 import sql from "../../database/db";
+import { formatDateForPostgres } from "../../utils/datetime";
+import { ListingModel } from "../../models/listingmodel";
+import { validateOrReject } from "class-validator";
 
 const router = Router();
 
@@ -47,6 +50,45 @@ const router = Router();
  *               seo_desc:
  *                 type: string
  *                 description: SEO description for the listing.
+ *               url:
+ *                  type: string
+ *                  description: URL of the current listing
+ *               firstReg:
+ *                  type: date-time
+ *                  description: The date and time of first registration of the vehicle
+ *               mileage:
+ *                  type: number
+ *                  description: Mileage on the car (in km)
+ *               fuel:
+ *                  type: string
+ *                  description: Type of fuel
+ *               transmission:
+ *                  type: string
+ *                  description: Type of transmission
+ *               kw:
+ *                  type: number
+ *                  description: Power of the car (in kW)
+ *               engineSize:
+ *                  type: number
+ *                  description: Size of engine (in cc)
+ *               vin:
+ *                  type: string
+ *                  description: Vehicle identification number
+ *               ddv:
+ *                  type: boolean
+ *                  description: DDV included
+ *               location:
+ *                  type: number
+ *                  description: Mileage on the car
+ *               possiblePrice:
+ *                  type: number
+ *                  description: First possible price on the car
+ *               deliveryPrice:
+ *                  type: number
+ *                  description: Price of the delivery
+ *               deliveryTime:
+ *                  type: datetime
+ *                  description: Date and time of the delivery possible
  *     responses:
  *       201:
  *         description: Listing created successfully.
@@ -57,51 +99,17 @@ const router = Router();
  */
 router.post("/", async (req, res) => {
   try {
-    const {
-      user_id,
-      title,
-      description,
-      user_price,
-      is_appraised,
-      is_auction = false,
-      auction_end,
-      seo_tag,
-      seo_desc,
-    } = req.body;
+    // Map request body to the ListingRequest class
+    const listingData = Object.assign(new ListingModel(), req.body);
 
-    // Validate required fields
-    if (!user_id || !title || !user_price) {
-      res.status(400).json({
-        status: "error",
-        message: "user_id, title, and user_price are required fields.",
-      });
-      return
-    }
+    // Validate the data
+    await validateOrReject(listingData);
 
-    // Insert data into the database
-    const result = await sql`
-      INSERT INTO listings (
-        user_id,
-        title,
-        description,
-        user_price,
-        is_appraised,
-        is_auction,
-        auction_end,
-        seo_tag,
-        seo_desc
-      ) VALUES (
-        ${user_id},
-        ${title},
-        ${description || null},
-        ${user_price},
-        ${is_appraised || null},
-        ${is_auction},
-        ${auction_end || null},
-        ${seo_tag || null},
-        ${seo_desc || null}
-      ) RETURNING *;
-    `;
+    // Generate SQL INSERT query dynamically
+    const sqlQuery = listingData.toCreateSQL('listings');
+    
+    // Execute the query
+    const result = await sql.unsafe(sqlQuery);
 
     // Return the created record
     res.status(201).json({
@@ -113,7 +121,7 @@ router.post("/", async (req, res) => {
     console.error("Error creating listing:", error);
     res.status(500).json({
       status: "error",
-      message: "Internal server error.",
+      message: `Internal server error.`,
     });
   }
 });
