@@ -1,3 +1,47 @@
+import "reflect-metadata";
+
+const QUERYABLE_METADATA_KEY = Symbol("queryable");
+
+export function IsQueryable(): PropertyDecorator {
+  return (target, propertyKey) => {
+    // Store queryable metadata for the property
+    Reflect.defineMetadata(QUERYABLE_METADATA_KEY, true, target, propertyKey);
+  };
+}
+
+// Utility function to check if a property is queryable
+export function isQueryable(target: Object, propertyKey: string): boolean {
+  return Reflect.getMetadata(QUERYABLE_METADATA_KEY, target, propertyKey) === true;
+}
+
+const DATAFIELD_METADATA_KEY = Symbol("datafield");
+
+export function IsDataField(): PropertyDecorator {
+  return (target, propertyKey) => {
+    // Store queryable metadata for the property
+    Reflect.defineMetadata(DATAFIELD_METADATA_KEY, true, target, propertyKey);
+  };
+}
+
+// Utility function to check if a property is queryable
+export function isDataField(target: Object, propertyKey: string): boolean {
+  return Reflect.getMetadata(DATAFIELD_METADATA_KEY, target, propertyKey) === true;
+}
+
+const NOT_UPDATABLE_METADATA_KEY = Symbol("not_updatable");
+
+export function IsNotUpdatable(): PropertyDecorator {
+  return (target, propertyKey) => {
+    // Store queryable metadata for the property
+    Reflect.defineMetadata(NOT_UPDATABLE_METADATA_KEY, true, target, propertyKey);
+  };
+}
+
+// Utility function to check if a property is queryable
+export function isNotUpdatable(target: Object, propertyKey: string): boolean {
+  return Reflect.getMetadata(NOT_UPDATABLE_METADATA_KEY, target, propertyKey) === true;
+}
+
 export class BaseModel {
 
   // Generate SQL-safe string for values
@@ -15,6 +59,31 @@ export class BaseModel {
     });
   }
 
+  static getQueryableFields<T extends BaseModel>(instance: T): string[] {
+    const keys = Object.keys(instance);
+    return keys.filter((key) => isQueryable(instance, key));
+  }
+
+  static getDataFieldEntries<T extends BaseModel>(instance: T, updatable : boolean) {
+    const keys = Object.entries(instance);
+    return keys.filter(([key, value]) => {
+      // Include the field if it's a valid data field (checked by isDataField)
+      // If `updatable` is false, also ensure the field is updatable by checking `isNotUpdatable`
+      if (isDataField(instance, key)) {
+          if (updatable) {
+              return !isNotUpdatable(instance, key) && value;
+          }
+          return value;
+      }
+      return false;
+  });
+  }
+
+  static getQueryableEntries<T extends BaseModel>(instance: T) {
+    const keys = Object.entries(instance);
+    return keys.filter(([key, value]) => isQueryable(instance, key) && value);
+  }
+
   // Generate SQL-safe string for column keys
   private toSQLKeys(): string[] {
     return Object.keys(this).map((key) => `${key}`);
@@ -28,47 +97,49 @@ export class BaseModel {
     return `INSERT INTO ${tableName} (${columns}) VALUES (${values}) RETURNING *;`;
   }
 
-  toReadSQL(tableName: string, datamodel : any): string {
+  static toReadSQL<T extends BaseModel>(tableName: string, datamodel : T): string {
 
-    const keys = Object.keys(datamodel);
-    const values = Object.values(datamodel);
+    const queryableFields = BaseModel.getQueryableEntries(datamodel);
 
-    // TODO: Remove user id from this
+    if (queryableFields.length == 0) throw Error("No suitable queries were provided.")
 
-    const conditions = Object.entries(datamodel)
-    .map(([key, value]) => `${key} = ${typeof value === "string" ? `'${value}'` : value}`)
-    .join(" AND ");
+    const conditions = queryableFields.map(([_, value]) => value).join(" AND ");
+
+    // TODO: Select fields
 
     return `SELECT * FROM ${tableName} WHERE ${conditions};`;
   }
 
   // Generate SQL for UPDATE operation
-  toUpdateSQL(
+  static toUpdateSQL<T extends BaseModel>(
     tableName: string,
-    dataModel : any,
-    filterModel : any
+    dataModel : T
   ): string {
-    const dataKeys = Object.keys(dataModel);
-    const dataValues = Object.values(dataModel);
-    const filterKeys = Object.keys(filterModel);
-    const filterValues = Object.values(filterModel);
 
-    const dataAssignments = dataKeys
-      .map((key, index) => `${key} = ${typeof dataValues[index] === "string" ? `'${dataValues[index]}'` : dataValues[index]}`)
+    const dataAssignments = BaseModel.getDataFieldEntries(dataModel, true)
+      .map(([key, value]) => `${key} = ${typeof value === "string" ? `'${value}'` : value}`)
       .join(", ");
 
-    const filterConditions = filterKeys
-      .map((key, index) => `${key} = ${typeof filterValues[index] === "string" ? `'${filterValues[index]}'` : filterValues[index]}`)
-      .join(" AND ");
+    if (dataAssignments.length == 0) throw Error("No suitable data fields were provided.")
 
-    return `UPDATE ${tableName} SET ${dataAssignments} WHERE ${filterConditions} RETURNING *;`;
+    const queryableFields = BaseModel.getQueryableEntries(dataModel);
+
+    if (queryableFields.length == 0) throw Error("No suitable conditions were provided.")
+
+    const conditions = queryableFields.map(([_, value]) => value).join(" AND ");
+
+    // TODO: This also sets the user_id and other fields which are in conditions, should probably be separate
+
+    return `UPDATE ${tableName} SET ${dataAssignments} WHERE ${conditions} RETURNING *;`;
   }
 
    // Generate SQL for DELETE operation
-   toDeleteSQL(tableName: string, filters: any): string {
-    const conditions = Object.entries(filters)
-      .map(([key, value]) => `${key} = ${typeof value === "string" ? `'${value}'` : value}`)
-      .join(" AND ");
+   static toDeleteSQL<T extends BaseModel>(tableName: string, datamodel: T): string {
+    const queryableFields = BaseModel.getQueryableEntries(datamodel);
+
+    if (queryableFields.length == 0) throw Error("No suitable conditions were provided.")
+
+    const conditions = queryableFields.map(([_, value]) => value).join(" AND ");
 
     return `DELETE FROM ${tableName} WHERE ${conditions} RETURNING *;`;
   }

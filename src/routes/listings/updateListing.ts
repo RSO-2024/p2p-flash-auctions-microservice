@@ -2,17 +2,18 @@ import { Router } from "express";
 import sql from "../../database/db";
 import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
+import { BaseModel } from "../../models/basemodel";
 
 const router = Router();
 
 /**
  * @swagger
  * /listings:
- *   post:
+ *   patch:
  *     tags:
  *      - Listings
- *     summary: Create a new listing.
- *     description: Adds a new entry to the `listings` table with the provided data.
+ *     summary: Partially update a listing.
+ *     description: Partially updates a `listings` table with the provided query data.
  *     requestBody:
  *       required: true
  *       content:
@@ -90,34 +91,37 @@ const router = Router();
  *                  description: Date and time of the delivery possible
  *     responses:
  *       201:
- *         description: Listing created successfully.
+ *         description: Listing updated successfully.
  *       400:
  *         description: Invalid request data.
  *       500:
  *         description: Internal server error.
  */
-router.post("/", async (req, res) => {
+router.patch("/", async (req, res) => {
   try {
     // Map request body to the ListingModel class
     const listingData : ListingModel = Object.assign(new ListingModel(), req.body);
+    listingData.prepareQueryData();
 
     // Validate the data
-    await validateOrReject(listingData);
+    await validateOrReject(listingData, {
+        skipMissingProperties: true
+    });
 
     // Generate SQL INSERT query dynamically
-    const sqlQuery = listingData.toCreateSQL('listings');
-    
+    const sqlQuery = BaseModel.toUpdateSQL('listings', listingData);
+
     // Execute the query
     const result = await sql.unsafe(sqlQuery);
 
     // Return the created record
     res.status(201).json({
       status: "success",
-      message: "Listing created successfully.",
+      message: "Listings updated successfully.",
       data: result,
     });
   } catch (error) {
-    console.error("Error creating listing:", error);
+    console.error("Error updating listing:", error);
     res.status(500).json({
       status: "error",
       message: `Internal server error. ${error}`,
