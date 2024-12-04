@@ -42,9 +42,26 @@ export function isNotUpdatable(target: Object, propertyKey: string): boolean {
   return Reflect.getMetadata(NOT_UPDATABLE_METADATA_KEY, target, propertyKey) === true;
 }
 
-export class BaseModel {
+export abstract class BaseModel {
 
-  // Generate SQL-safe string for values
+  /**
+   * Prepare data from client for PostgresSQL database
+   */
+  abstract prepareData() : void
+
+  /**
+   * Parse data from PostgresSQL to client for easier interpretation
+   */
+  abstract parseData() : void
+
+  /**
+   * Prepare query data conditions.
+   */
+  abstract prepareQueryData(query_data : any) : void
+
+  /**
+   * Generate SQL-safe string for values
+   * */ 
   private toSQLValues(): string[] {
     return Object.values(this).map((value) => {
       if (value === undefined || value === null) {
@@ -134,8 +151,11 @@ export class BaseModel {
   }
 
    // Generate SQL for DELETE operation
-   static toDeleteSQL<T extends BaseModel>(tableName: string, datamodel: T): string {
-    const queryableFields = BaseModel.getQueryableEntries(datamodel);
+   static toDeleteSQL<T extends BaseModel>(tableName: string, datamodel: T, includeOnlyFields: string[] = []): string {
+    const queryableFields = BaseModel.getQueryableEntries(datamodel).filter(([key, value]) => {
+      // Include only fields that are in the includeOnlyFields array (if provided)
+      return (includeOnlyFields.length === 0 || includeOnlyFields.includes(key));
+    });
 
     if (queryableFields.length == 0) throw Error("No suitable conditions were provided.")
 

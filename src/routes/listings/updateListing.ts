@@ -3,6 +3,7 @@ import sql from "../../database/db";
 import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
 import { BaseModel } from "../../models/basemodel";
+import { getTableName } from "../../database/config_db";
 
 const router = Router();
 
@@ -22,8 +23,8 @@ const router = Router();
  *             type: object
  *             properties:
  *               user_id:
- *                 type: integer
- *                 description: ID of the user creating the listing.
+ *                 type: string
+ *                 description: UUID of the user creating the listing.
  *               title:
  *                 type: string
  *                 description: Title of the listing.
@@ -34,28 +35,19 @@ const router = Router();
  *               user_price:
  *                 type: number
  *                 description: Price set by the user.
- *               is_appraised:
- *                 type: boolean
- *                 description: Indicates if the item is appraised.
- *               is_auction:
- *                 type: boolean
- *                 description: Indicates if the item is being auctioned.
- *               auction_end:
- *                 type: string
- *                 format: date-time
- *                 description: End date and time of the auction.
  *               seo_tag:
  *                 type: string
  *                 description: SEO tag for the listing.
  *               seo_desc:
  *                 type: string
  *                 description: SEO description for the listing.
- *               url:
- *                  type: string
- *                  description: URL of the current listing
  *               firstReg:
  *                  type: date-time
+ *                  example: DD/MM/YYYY
  *                  description: The date and time of first registration of the vehicle
+ *               man_year:
+ *                  type: number
+ *                  description: The manufacturing year of the vehicle
  *               mileage:
  *                  type: number
  *                  description: Mileage on the car (in km)
@@ -65,6 +57,9 @@ const router = Router();
  *               transmission:
  *                  type: string
  *                  description: Type of transmission
+ *               color:
+ *                  type: string
+ *                  description: Color of the vehicle
  *               kw:
  *                  type: number
  *                  description: Power of the car (in kW)
@@ -80,15 +75,13 @@ const router = Router();
  *               location:
  *                  type: number
  *                  description: Mileage on the car
- *               possiblePrice:
- *                  type: number
- *                  description: First possible price on the car
- *               deliveryPrice:
- *                  type: number
- *                  description: Price of the delivery
- *               deliveryTime:
- *                  type: datetime
- *                  description: Date and time of the delivery possible
+ *               query:
+ *                  type: object
+ *                  description: Query the API with these queryable fields
+ *                  properties:
+ *                    listing_id:
+ *                      type: number
+ *                      description: ID of the existing listing to update.
  *     responses:
  *       201:
  *         description: Listing updated successfully.
@@ -101,7 +94,7 @@ router.patch("/", async (req, res) => {
   try {
     // Map request body to the ListingModel class
     const listingData : ListingModel = Object.assign(new ListingModel(), req.body);
-    listingData.prepareQueryData();
+    listingData.prepareQueryData(req.body.query);
 
     // Validate the data
     await validateOrReject(listingData, {
@@ -109,7 +102,7 @@ router.patch("/", async (req, res) => {
     });
 
     // Generate SQL INSERT query dynamically
-    const sqlQuery = BaseModel.toUpdateSQL('listings', listingData);
+    const sqlQuery = BaseModel.toUpdateSQL(getTableName("p2pListingsTable"), listingData);
 
     // Execute the query
     const result = await sql.unsafe(sqlQuery);
@@ -118,7 +111,7 @@ router.patch("/", async (req, res) => {
     res.status(201).json({
       status: "success",
       message: "Listings updated successfully.",
-      data: result,
+      data: `Entries updated: ${result.length}`,
     });
   } catch (error) {
     console.error("Error updating listing:", error);

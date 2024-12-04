@@ -71,3 +71,12 @@ export function simpleCondition(condition : any, columnName: string) : string | 
 
     return `${columnName} = ${typeof condition === "string" ? `'${condition}'` : condition}`
 }
+
+export function likeCondition(condition: string | undefined, columnName: string): string | undefined {
+  if (condition === undefined) return undefined;
+
+  // Escape single quotes in the condition to avoid SQL injection
+  const sanitizedCondition = condition.replace(/'/g, "''");
+
+  return `${columnName} LIKE '%${sanitizedCondition}%'`;
+}

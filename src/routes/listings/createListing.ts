@@ -2,6 +2,7 @@ import { Router } from "express";
 import sql from "../../database/db";
 import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
+import { getTableName } from "../../database/config_db";
 
 const router = Router();
 
@@ -21,8 +22,8 @@ const router = Router();
  *             type: object
  *             properties:
  *               user_id:
- *                 type: integer
- *                 description: ID of the user creating the listing.
+ *                 type: string
+ *                 description: UUID of the user creating the listing.
  *               title:
  *                 type: string
  *                 description: Title of the listing.
@@ -33,28 +34,19 @@ const router = Router();
  *               user_price:
  *                 type: number
  *                 description: Price set by the user.
- *               is_appraised:
- *                 type: boolean
- *                 description: Indicates if the item is appraised.
- *               is_auction:
- *                 type: boolean
- *                 description: Indicates if the item is being auctioned.
- *               auction_end:
- *                 type: string
- *                 format: date-time
- *                 description: End date and time of the auction.
  *               seo_tag:
  *                 type: string
  *                 description: SEO tag for the listing.
  *               seo_desc:
  *                 type: string
  *                 description: SEO description for the listing.
- *               url:
- *                  type: string
- *                  description: URL of the current listing
  *               firstReg:
  *                  type: date-time
+ *                  example: DD/MM/YYYY
  *                  description: The date and time of first registration of the vehicle
+ *               man_year:
+ *                  type: number
+ *                  description: The manufacturing year of the vehicle
  *               mileage:
  *                  type: number
  *                  description: Mileage on the car (in km)
@@ -64,6 +56,9 @@ const router = Router();
  *               transmission:
  *                  type: string
  *                  description: Type of transmission
+ *               color:
+ *                  type: string
+ *                  description: Color of the vehicle
  *               kw:
  *                  type: number
  *                  description: Power of the car (in kW)
@@ -79,15 +74,6 @@ const router = Router();
  *               location:
  *                  type: number
  *                  description: Mileage on the car
- *               possiblePrice:
- *                  type: number
- *                  description: First possible price on the car
- *               deliveryPrice:
- *                  type: number
- *                  description: Price of the delivery
- *               deliveryTime:
- *                  type: datetime
- *                  description: Date and time of the delivery possible
  *     responses:
  *       201:
  *         description: Listing created successfully.
@@ -105,7 +91,7 @@ router.post("/", async (req, res) => {
     await validateOrReject(listingData);
 
     // Generate SQL INSERT query dynamically
-    const sqlQuery = listingData.toCreateSQL('listings');
+    const sqlQuery = listingData.toCreateSQL(getTableName("p2pListingsTable"));
     
     // Execute the query
     const result = await sql.unsafe(sqlQuery);

@@ -1,7 +1,7 @@
-import { IsString, IsNumber, IsBoolean, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsBoolean, IsOptional, IsDate } from 'class-validator';
 import { BaseModel, IsDataField, IsNotUpdatable, IsQueryable } from './basemodel';
 import { formatDateForPostgres } from '../utils/datetime';
-import { dateRangeCondition, parseNumericValues, simpleCondition } from '../utils/dbUtils';
+import { dateRangeCondition, likeCondition, parseNumericValues, simpleCondition } from '../utils/dbUtils';
 
 export class ListingModel extends BaseModel {
 
@@ -9,7 +9,7 @@ export class ListingModel extends BaseModel {
 
   @IsDataField()
   @IsNotUpdatable()
-  @IsNumber()
+  @IsString()
   user_id!: number;
 
   @IsDataField()
@@ -26,20 +26,6 @@ export class ListingModel extends BaseModel {
   user_price!: number;
 
   @IsDataField()
-  @IsBoolean()
-  @IsOptional()
-  is_appraised?: boolean;
-
-  @IsDataField()
-  @IsBoolean()
-  @IsOptional()
-  is_auction: boolean = false;
-
-  @IsDataField()
-  @IsOptional()
-  auction_end?: string;
-
-  @IsDataField()
   @IsString()
   @IsOptional()
   seo_tag?: string;
@@ -50,13 +36,12 @@ export class ListingModel extends BaseModel {
   seo_desc?: string;
 
   @IsDataField()
-  @IsString()
   @IsOptional()
-  url?: string;
+  firstReg?: string;
 
   @IsDataField()
   @IsOptional()
-  firstReg?: string;
+  man_year?: string;
 
   @IsDataField()
   @IsOptional()
@@ -98,26 +83,19 @@ export class ListingModel extends BaseModel {
   location?: string;
 
   @IsDataField()
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  possiblePrice?: number;
-
-  @IsDataField()
-  @IsNumber()
-  @IsOptional()
-  deliveryPrice?: number;
-
-  @IsDataField()
-  @IsOptional()
-  deliveryTime?: string;
+  color?: string;
 
   // Queryable fields
 
   @IsOptional()
-  startFirstReg?: string;
+  @IsQueryable()
+  listingIdQuery?: string;
 
   @IsOptional()
-  endFirstReg?: string
+  @IsQueryable()
+  titleQuery?: string
 
   @IsOptional()
   @IsQueryable()
@@ -125,18 +103,21 @@ export class ListingModel extends BaseModel {
 
   @IsOptional()
   @IsQueryable()
-  user_idQuery?: string
+  userIdQuery?: string
 
   // Prepare data from client for PostgresSQL database
   prepareData() {
     this.firstReg = formatDateForPostgres(this.firstReg);
-    this.deliveryTime = formatDateForPostgres(this.deliveryTime);
+    this.man_year = formatDateForPostgres(this.man_year);
   }
 
   // Prepare query data conditions
-  prepareQueryData() {
-    this.firstReqQuery = dateRangeCondition(this.startFirstReg, this.endFirstReg, "firstreg");
-    this.user_idQuery = simpleCondition(this.user_id, "user_id");
+  prepareQueryData(query_data : any) {
+    // Build queries
+    this.firstReqQuery = dateRangeCondition(query_data.startFirstReg, query_data.endFirstReg, "firstreg");
+    this.userIdQuery = simpleCondition(query_data.user_id, "user_id");
+    this.titleQuery = likeCondition(query_data.title, "title");
+    this.listingIdQuery = simpleCondition(query_data.listing_id, "listing_id");
   }
 
   // Parse date from PostgresSQL to client for easier interpretation

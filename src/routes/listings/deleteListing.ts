@@ -3,6 +3,7 @@ import sql from "../../database/db";
 import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
 import { BaseModel } from "../../models/basemodel";
+import { getTableName } from "../../database/config_db";
 
 const router = Router();
 
@@ -21,19 +22,16 @@ const router = Router();
  *           schema:
  *             type: object
  *             properties:
- *               user_id:
- *                 type: integer
- *                 description: ID of the user creating the listing.
- *               startFirstReg:
- *                 type: string
- *                 format: date
- *                 example: DD/MM/YYYY
- *                 description: Start date of the first registration.
- *               endFirstReg:
- *                 type: string
- *                 format: date
- *                 example: DD/MM/YYYY
- *                 description: End date of the first registration.
+ *               query:
+ *                type: object
+ *                description: Query the API with these queryable fields
+ *                properties:
+ *                 user_id:
+ *                   type: string
+ *                   description: UUID of the user listing.
+ *                 listing_id:
+ *                   type: number
+ *                   description: ID of the existing listing to delete.
  *     responses:
  *       201:
  *         description: Returned listings.
@@ -46,7 +44,7 @@ router.delete("/", async (req, res) => {
   try {
     // Map request body to the ListingModel class
     const listingData : ListingModel = Object.assign(new ListingModel(), req.body);
-    listingData.prepareQueryData();
+    listingData.prepareQueryData(req.body.query);
 
     // Validate the data
     await validateOrReject(listingData, {
@@ -54,7 +52,7 @@ router.delete("/", async (req, res) => {
     });
 
     // Generate SQL READ query dynamically
-    const sqlQuery = BaseModel.toDeleteSQL('listings', listingData);
+    const sqlQuery = BaseModel.toDeleteSQL(getTableName("p2pListingsTable"), listingData);
     
     // Execute the query
     const results = await sql.unsafe(sqlQuery);

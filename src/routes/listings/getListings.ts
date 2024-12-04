@@ -3,6 +3,7 @@ import sql from "../../database/db";
 import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
 import { BaseModel } from "../../models/basemodel";
+import { getTableName } from "../../database/config_db";
 
 const router = Router();
 
@@ -21,19 +22,23 @@ const router = Router();
  *           schema:
  *             type: object
  *             properties:
- *               user_id:
- *                 type: integer
- *                 description: ID of the user creating the listing.
- *               startFirstReg:
- *                 type: string
- *                 format: date
- *                 example: DD/MM/YYYY
- *                 description: Start date of the first registration.
- *               endFirstReg:
- *                 type: string
- *                 format: date
- *                 example: DD/MM/YYYY
- *                 description: End date of the first registration.
+ *               query:
+ *                type: object
+ *                description: Query the API with these queryable fields
+ *                properties:
+ *                 title:
+ *                   type: string
+ *                   description: Search by the title string
+ *                 startFirstReg:
+ *                   type: string
+ *                   format: date
+ *                   example: DD/MM/YYYY
+ *                   description: Start date of the first registration.
+ *                 endFirstReg:
+ *                   type: string
+ *                   format: date
+ *                   example: DD/MM/YYYY
+ *                   description: End date of the first registration.
  *     responses:
  *       201:
  *         description: Returned listings.
@@ -45,8 +50,8 @@ const router = Router();
 router.get("/", async (req, res) => {
   try {
     // Map request body to the ListingModel class
-    const listingData : ListingModel = Object.assign(new ListingModel(), req.body);
-    listingData.prepareQueryData();
+    const listingData : ListingModel = Object.assign(new ListingModel(), req.body.query);
+    listingData.prepareQueryData(req.body.query);
 
     // Validate the data
     await validateOrReject(listingData, {
@@ -54,7 +59,7 @@ router.get("/", async (req, res) => {
     });
 
     // Generate SQL READ query dynamically
-    const sqlQuery = BaseModel.toReadSQL('listings', listingData);
+    const sqlQuery = BaseModel.toReadSQL(getTableName("p2pListingsTable"), listingData);
 
     console.log(sqlQuery);
     
