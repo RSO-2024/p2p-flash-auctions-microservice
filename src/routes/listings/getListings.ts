@@ -60,8 +60,6 @@ router.get("/", async (req, res) => {
 
     // Generate SQL READ query dynamically
     const sqlQuery = BaseModel.toReadSQL(getTableName("p2pListingsTable"), listingData);
-
-    console.log(sqlQuery);
     
     // Execute the query
     const results = await sql.unsafe(sqlQuery);

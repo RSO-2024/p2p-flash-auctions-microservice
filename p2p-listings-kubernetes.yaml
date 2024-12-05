@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: p2p-listings-deployment
+  labels:
+    app: p2p-listings
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: p2p-listings
+  template:
+    metadata:
+      labels:
+        app: p2p-listings
+    spec:
+      containers:
+        - name: p2p-listings
+          image: registry.digitalocean.com/clutchbids-registry/p2p-listings:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              memory: 512Mi
+          envFrom:
+            - secretRef:
+                name: p2p-listings-secrets
+      imagePullSecrets:
+        - name: clutchbids-registry
+
+# Expose the Deployment as a Service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: p2p-listings-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: p2p-listings
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
