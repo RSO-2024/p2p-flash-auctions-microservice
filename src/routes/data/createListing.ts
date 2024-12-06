@@ -8,7 +8,7 @@ const router = Router();
 
 /**
  * @swagger
- * /listings:
+ * /listings/data:
  *   post:
  *     tags:
  *      - Listings

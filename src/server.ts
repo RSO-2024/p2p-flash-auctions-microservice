@@ -6,8 +6,6 @@ import path from 'path';
 
 import sql from './database/db';
 
-import { requireRole, verifyJWT } from './middleware/authorization';
-
 const app: Application = express();
 
 
@@ -40,6 +38,7 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 
 app.use(express.json());
 
+app.use('/api/listings/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Load routes
 const loadRoutes = (dir: string) => {
@@ -57,7 +56,7 @@ const loadRoutes = (dir: string) => {
                 .replace(path.join(__dirname, 'routes'), '')
                 .replace(/\\/g, '/');
             
-            app.use(`/api${relativePath}`, route);
+            app.use(`/api/listings${relativePath}`, route);
         }
     });
 };
@@ -89,13 +88,10 @@ const shutdownGracefully = () => {
 //   shutdownGracefully();
 // });
 
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
 // A function that uses authentication middleware
-app.get('/admin-resource', verifyJWT, requireRole('admin'), (req, res: Response) => {
-    res.send('Access granted to admin');
-});
+//app.get('/admin-resource', verifyJWT, requireRole('admin'), (req, res: Response) => {
+//    res.send('Access granted to admin');
+//});
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Hello World!');

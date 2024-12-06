@@ -9,7 +9,7 @@ const router = Router();
 
 /**
  * @swagger
- * /listings:
+ * /listings/data:
  *   delete:
  *     tags:
  *      - Listings
