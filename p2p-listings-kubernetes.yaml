@@ -21,8 +21,12 @@ spec:
           ports:
             - containerPort: 3000
           resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
             limits:
-              memory: 512Mi
+              memory: "512Mi"
+              cpu: "500m"
           envFrom:
             - secretRef:
                 name: p2p-listings-secrets
@@ -36,7 +40,6 @@ kind: Service
 metadata:
   name: p2p-listings-service
 spec:
-  type: LoadBalancer
   selector:
     app: p2p-listings
   ports:
