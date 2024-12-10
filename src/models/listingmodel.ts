@@ -1,88 +1,93 @@
-import { IsString, IsNumber, IsBoolean, IsOptional, IsDate } from 'class-validator';
-import { BaseModel, IsDataField, IsNotUpdatable, IsQueryable } from './basemodel';
+import { IsString, IsNumber, IsBoolean, IsOptional, IsUUID, validateOrReject } from 'class-validator';
+import { BaseModel, DataColumn, getDataColumn, getDataFieldEntries, IsQueryable } from './basemodel';
 import { formatDateForPostgres } from '../utils/datetime';
-import { dateRangeCondition, likeCondition, parseNumericValues, simpleCondition } from '../utils/dbUtils';
+import { parseNumericValues } from '../utils/dbUtils';
+import supabase from '../supabase/client';
 
 export class ListingModel extends BaseModel {
 
+  TABLE_NAME = 'p2p_listings';
+
   // Data fields
+  @DataColumn('listing_id')
+  @IsOptional()
+  listing_id?: number;
+  
+  @DataColumn('user_id')
+  @IsUUID()
+  user_id?: string;
 
-  @IsDataField()
-  @IsNotUpdatable()
-  @IsString()
-  user_id!: number;
-
-  @IsDataField()
+  @DataColumn('title')
   @IsString()
   title!: string;
 
-  @IsDataField()
+  @DataColumn('description')
   @IsString()
   @IsOptional()
   description?: string;
 
-  @IsDataField()
+  @DataColumn('user_price')
   @IsNumber()
   user_price!: number;
 
-  @IsDataField()
+  @DataColumn('seo_tag')
   @IsString()
   @IsOptional()
   seo_tag?: string;
 
-  @IsDataField()
+  @DataColumn('seo_desc')
   @IsString()
   @IsOptional()
   seo_desc?: string;
 
-  @IsDataField()
+  @DataColumn('firstreg')
   @IsOptional()
-  firstReg?: string;
+  firstreg?: string;
 
-  @IsDataField()
+  @DataColumn('man_year')
   @IsOptional()
   man_year?: string;
 
-  @IsDataField()
+  @DataColumn('mileage')
   @IsOptional()
   mileage?: number;
 
-  @IsDataField()
+  @DataColumn('fuel')
   @IsString()
   @IsOptional()
   fuel?: string;
 
-  @IsDataField()
+  @DataColumn('transmission')
   @IsString()
   @IsOptional()
   transmission?: string;
 
-  @IsDataField()
+  @DataColumn('kw')
   @IsNumber()
   @IsOptional()
   kw?: number;
 
-  @IsDataField()
+  @DataColumn('enginesize')
   @IsNumber()
   @IsOptional()
-  engineSize?: number;
+  enginesize?: number;
 
-  @IsDataField()
+  @DataColumn('vin')
   @IsString()
   @IsOptional()
   vin?: string;
 
-  @IsDataField()
+  @DataColumn('ddv')
   @IsBoolean()
   @IsOptional()
   ddv?: boolean;
 
-  @IsDataField()
+  @DataColumn('location')
   @IsString()
   @IsOptional()
   location?: string;
 
-  @IsDataField()
+  @DataColumn('color')
   @IsString()
   @IsOptional()
   color?: string;
@@ -99,7 +104,11 @@ export class ListingModel extends BaseModel {
 
   @IsOptional()
   @IsQueryable()
-  firstReqQuery?: string
+  startReqQuery?: string
+
+  @IsOptional()
+  @IsQueryable()
+  endReqQuery?: string
 
   @IsOptional()
   @IsQueryable()
@@ -107,17 +116,35 @@ export class ListingModel extends BaseModel {
 
   // Prepare data from client for PostgresSQL database
   prepareData() {
-    this.firstReg = formatDateForPostgres(this.firstReg);
+    this.firstreg = formatDateForPostgres(this.firstreg);
     this.man_year = formatDateForPostgres(this.man_year);
   }
 
   // Prepare query data conditions
-  prepareQueryData(query_data : any) {
-    // Build queries
-    this.firstReqQuery = dateRangeCondition(query_data.startFirstReg, query_data.endFirstReg, "firstreg");
-    this.userIdQuery = simpleCondition(query_data.user_id, "user_id");
-    this.titleQuery = likeCondition(query_data.title, "title");
-    this.listingIdQuery = simpleCondition(query_data.listing_id, "listing_id");
+  prepareQueryData(queryData : any) {
+    this.startReqQuery = queryData.startFirstReg;
+    this.endReqQuery = queryData.endFirstReqQuery;
+    this.titleQuery = queryData.title;
+    this.listingIdQuery = queryData.listing_id;
+  }
+
+  // Applies all the Postgres filters to the query
+  applyFilters(query: any) {
+    
+    if (this.startReqQuery) {
+      query = query.gte(getDataColumn(this, 'firstreg'), this.startReqQuery);
+    }
+    if (this.endReqQuery) {
+      query = query.lte(getDataColumn(this, 'firstreg'), this.endReqQuery);
+    }
+    if (this.titleQuery) {
+      query = query.like(getDataColumn(this, 'title'), `%${this.titleQuery}%`);
+    }
+    if (this.listingIdQuery) {
+      query = query.eq(getDataColumn(this, 'listing_id'), this.listingIdQuery);
+    }
+
+    return query;
   }
 
   // Parse date from PostgresSQL to client for easier interpretation
@@ -125,4 +152,90 @@ export class ListingModel extends BaseModel {
     this.user_price = parseNumericValues(this.user_price, "float");
     this.kw = parseNumericValues(this.user_price, "float");
   }
+
+  // Custom APIs
+  async fetchData() {
+
+    // Validate the data
+    await validateOrReject(this, {
+      skipMissingProperties: true
+    });
+
+    var query = supabase.from(this.TABLE_NAME).select(`*, profiles ( username )`);
+
+    query = this.applyFilters(query);
+
+    return await query;
+  }
+
+  async createListing(user : any, authToken : string) {
+
+    this.user_id = user.id;
+
+    if (!this.user_id) {
+      throw Error("The user id was not provided for the data.")
+    }
+
+    // Validate the data
+    await validateOrReject(this);
+
+    let query = supabase.from(this.TABLE_NAME).insert(Object.fromEntries(getDataFieldEntries(this))).setHeader(
+      'Authorization', `${authToken}`
+    );
+
+    return await query;
+  }
+
+  async deleteListing(user : any, authToken : string) {
+
+    this.user_id = user.id;
+
+    if (!this.user_id) {
+      throw Error("The user id was not provided for the data.");
+    }
+
+    if (!this.listingIdQuery) {
+      throw Error("The listing id was not provided for the data.");
+    }
+
+    // Validate the data
+    await validateOrReject(this, {
+      skipMissingProperties: true
+    });
+
+    var query = supabase.from(this.TABLE_NAME).delete().setHeader(
+      'Authorization', `${authToken}`
+    );
+
+    query = this.applyFilters(query);
+
+    return await query;
+  }
+
+  async updateListing(user : any, authToken : string) {
+
+    this.user_id = user.id;
+
+    if (!this.user_id) {
+      throw Error("The user id was not provided for the data.");
+    }
+
+    if (!this.listingIdQuery) {
+      throw Error("The listing id was not provided for the data.");
+    }
+
+    // Validate the data
+    await validateOrReject(this, {
+      skipMissingProperties: true
+    });
+    
+    var query = supabase.from(this.TABLE_NAME).update(Object.fromEntries(getDataFieldEntries(this))).setHeader(
+      'Authorization', `${authToken}`
+    );
+
+    query = this.applyFilters(query);
+
+    return await query;
+  }
+
 }

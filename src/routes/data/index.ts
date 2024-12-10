@@ -3,6 +3,7 @@ import createListing from "./createListing";
 import getListings from "./getListings";
 import updateListing from "./updateListing";
 import deleteListing from "./deleteListing";
+import { authenticateUser } from "../../middleware/authorization";
 
 const router = express.Router();
 

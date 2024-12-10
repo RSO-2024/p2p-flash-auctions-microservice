@@ -4,6 +4,7 @@ import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
 import { BaseModel } from "../../models/basemodel";
 import { getTableName } from "../../database/config_db";
+import { authenticateUser } from "../../middleware/authorization";
 
 const router = Router();
 
@@ -90,28 +91,26 @@ const router = Router();
  *       500:
  *         description: Internal server error.
  */
-router.patch("/", async (req, res) => {
+router.patch("/", authenticateUser, async (req, res) => {
   try {
     // Map request body to the ListingModel class
     const listingData : ListingModel = Object.assign(new ListingModel(), req.body);
     listingData.prepareQueryData(req.body.query);
 
-    // Validate the data
-    await validateOrReject(listingData, {
-        skipMissingProperties: true
-    });
+    const response = await listingData.updateListing(req.body.user, req.headers.authorization!);
 
-    // Generate SQL INSERT query dynamically
-    const sqlQuery = BaseModel.toUpdateSQL(getTableName("p2pListingsTable"), listingData);
-
-    // Execute the query
-    const result = await sql.unsafe(sqlQuery);
+    if (response.error) {
+      res.status(400).json({
+          status: "error",
+          message: `Unexpected error occurred. Code: ${response.error.code}. ${response.error.message}`,
+      });
+      return
+    }
 
     // Return the created record
-    res.status(201).json({
+    res.status(200).json({
       status: "success",
-      message: "Listings updated successfully.",
-      data: `Entries updated: ${result.length}`,
+      message: "Listings updated successfully."
     });
   } catch (error) {
     console.error("Error updating listing:", error);

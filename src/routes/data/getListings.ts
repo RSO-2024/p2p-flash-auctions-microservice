@@ -50,24 +50,25 @@ const router = Router();
 router.get("/", async (req, res) => {
   try {
     // Map request body to the ListingModel class
-    const listingData : ListingModel = Object.assign(new ListingModel(), req.body.query);
+    const listingData : ListingModel = new ListingModel();
+
+    // Prepare queryable data
     listingData.prepareQueryData(req.body.query);
 
-    // Validate the data
-    await validateOrReject(listingData, {
-        skipMissingProperties: true
-    });
+    const { data, error } = await listingData.fetchData();
 
-    // Generate SQL READ query dynamically
-    const sqlQuery = BaseModel.toReadSQL(getTableName("p2pListingsTable"), listingData);
-    
-    // Execute the query
-    const results = await sql.unsafe(sqlQuery);
+    if (error) {
+      res.status(400).json({
+          status: "error",
+          message: `Unexpected error occurred. Code: ${error.code}. ${error.message}`,
+      });
+      return
+    }
 
     // Loop through each result and validate
     const validatedResults = [];
     
-    for (const resultData of results) {
+    for (const resultData of data) {
       const validatedResult : ListingModel = Object.assign(new ListingModel(), resultData);
       validatedResult.parseData();
 
@@ -76,7 +77,7 @@ router.get("/", async (req, res) => {
     }
 
     // Return the created record
-    res.status(201).json({
+    res.status(200).json({
       status: "success",
       message: "Read success.",
       data: validatedResults,

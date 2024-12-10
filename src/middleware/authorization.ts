@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload, SigningKeyCallback, VerifyErrors } from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
+import supabase from '../supabase/client';
 
 // Define custom types for request with user information
 interface AuthenticatedRequest extends Request {
@@ -16,6 +17,25 @@ const client = jwksClient({
 async function getSigningKey(kid: string): Promise<string> {
     const key = await client.getSigningKey(kid);
     return key.getPublicKey();
+}
+
+export async function authenticateUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authorization token required' });
+    return;
+  }
+  const token = authHeader.split(' ')[1];
+  const response = await supabase.auth.getUser(token);
+
+  if (response.error) {
+    res.status(401).json({ status: response.error.status, error: `Authorization token is incorrect. | ${response.error.code}` });
+    return;
+  }
+
+  req.body.user = response.data.user;
+  next();
 }
 
 // Middleware to verify JWT and enforce authentication
@@ -71,7 +91,7 @@ async function verifyToken(token: string): Promise<JwtPayload | undefined> {
             callback(error instanceof Error ? error : new Error(String(error)));;
           }
         },
-        { algorithms: ['RS256'], audience: process.env.SUPABASE_AUDIENCE },
+        { algorithms: ['HS256'], audience: process.env.SUPABASE_AUDIENCE },
         (err, decoded) => {
           if (err) {
             reject(err);

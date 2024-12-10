@@ -4,6 +4,8 @@ import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
 import { BaseModel } from "../../models/basemodel";
 import { getTableName } from "../../database/config_db";
+import { authenticateUser } from "../../middleware/authorization";
+import { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 const router = Router();
 
@@ -40,39 +42,26 @@ const router = Router();
  *       500:
  *         description: Internal server error.
  */
-router.delete("/", async (req, res) => {
+router.delete("/", authenticateUser, async (req, res) => {
   try {
     // Map request body to the ListingModel class
-    const listingData : ListingModel = Object.assign(new ListingModel(), req.body);
+    const listingData : ListingModel = new ListingModel();
     listingData.prepareQueryData(req.body.query);
 
-    // Validate the data
-    await validateOrReject(listingData, {
-        skipMissingProperties: true
-    });
+    const response = await listingData.deleteListing(req.body.user, req.headers.authorization!);
 
-    // Generate SQL READ query dynamically
-    const sqlQuery = BaseModel.toDeleteSQL(getTableName("p2pListingsTable"), listingData);
-    
-    // Execute the query
-    const results = await sql.unsafe(sqlQuery);
-
-    // Loop through each result and validate
-    const validatedResults = [];
-    
-    for (const resultData of results) {
-      const validatedResult : ListingModel = Object.assign(new ListingModel(), resultData);
-      validatedResult.parseData();
-
-      await validateOrReject(validatedResult);
-      validatedResults.push(validatedResult);
+    if (response.error) {
+      res.status(400).json({
+          status: "error",
+          message: `Unexpected error occurred. Code: ${response.error.code}. ${response.error.message}`,
+      });
+      return
     }
 
     // Return the created record
-    res.status(201).json({
+    res.status(200).json({
       status: "success",
-      message: "Delete success.",
-      data: results,
+      message: "Delete success."
     });
   } catch (error) {
     console.error("Error deleting listings:", error);

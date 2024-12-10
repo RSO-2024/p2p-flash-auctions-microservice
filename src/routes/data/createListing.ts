@@ -3,6 +3,8 @@ import sql from "../../database/db";
 import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
 import { getTableName } from "../../database/config_db";
+import supabase from "../../supabase/client";
+import { authenticateUser } from "../../middleware/authorization";
 
 const router = Router();
 
@@ -82,25 +84,25 @@ const router = Router();
  *       500:
  *         description: Internal server error.
  */
-router.post("/", async (req, res) => {
+router.post("/", authenticateUser, async (req, res) => {
   try {
     // Map request body to the ListingModel class
     const listingData : ListingModel = Object.assign(new ListingModel(), req.body);
 
-    // Validate the data
-    await validateOrReject(listingData);
+    const { error } = await listingData.createListing(req.body.user, req.headers.authorization!);
 
-    // Generate SQL INSERT query dynamically
-    const sqlQuery = listingData.toCreateSQL(getTableName("p2pListingsTable"));
-    
-    // Execute the query
-    const result = await sql.unsafe(sqlQuery);
+    if (error) {
+      res.status(400).json({
+          status: "error",
+          message: `Unexpected error occurred. Code: ${error.code}. ${error.message}`,
+      });
+      return
+    }
 
     // Return the created record
     res.status(201).json({
       status: "success",
-      message: "Listing created successfully.",
-      data: result,
+      message: "Listing created successfully."
     });
   } catch (error) {
     console.error("Error creating listing:", error);

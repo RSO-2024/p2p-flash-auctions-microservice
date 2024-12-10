@@ -1,6 +1,22 @@
 import "reflect-metadata";
 
 const QUERYABLE_METADATA_KEY = Symbol("queryable");
+const DATA_COLUMN_METADATA_KEY = Symbol("datacolumn");
+
+export function DataColumn(name: string) {
+  return function (target: Object, propertyKey: string | symbol) {
+    Reflect.defineMetadata(DATA_COLUMN_METADATA_KEY, name, target, propertyKey);
+  };
+}
+
+export function getDataColumn(target: Object, propertyKey: string | symbol): string {
+  return Reflect.getMetadata(DATA_COLUMN_METADATA_KEY, target, propertyKey as string);
+}
+
+// Utility function to check if a property is queryable
+export function isDataColumnField(target: Object, propertyKey: string): boolean {
+  return Reflect.getMetadata(DATA_COLUMN_METADATA_KEY, target, propertyKey) !== undefined;
+}
 
 export function IsQueryable(): PropertyDecorator {
   return (target, propertyKey) => {
@@ -14,32 +30,11 @@ export function isQueryable(target: Object, propertyKey: string): boolean {
   return Reflect.getMetadata(QUERYABLE_METADATA_KEY, target, propertyKey) === true;
 }
 
-const DATAFIELD_METADATA_KEY = Symbol("datafield");
-
-export function IsDataField(): PropertyDecorator {
-  return (target, propertyKey) => {
-    // Store queryable metadata for the property
-    Reflect.defineMetadata(DATAFIELD_METADATA_KEY, true, target, propertyKey);
-  };
-}
-
-// Utility function to check if a property is queryable
-export function isDataField(target: Object, propertyKey: string): boolean {
-  return Reflect.getMetadata(DATAFIELD_METADATA_KEY, target, propertyKey) === true;
-}
-
-const NOT_UPDATABLE_METADATA_KEY = Symbol("not_updatable");
-
-export function IsNotUpdatable(): PropertyDecorator {
-  return (target, propertyKey) => {
-    // Store queryable metadata for the property
-    Reflect.defineMetadata(NOT_UPDATABLE_METADATA_KEY, true, target, propertyKey);
-  };
-}
-
-// Utility function to check if a property is queryable
-export function isNotUpdatable(target: Object, propertyKey: string): boolean {
-  return Reflect.getMetadata(NOT_UPDATABLE_METADATA_KEY, target, propertyKey) === true;
+export function getDataFieldEntries<T extends BaseModel>(instance: T, updatable : boolean = false) {
+  const keys = Object.entries(instance);
+  return keys.filter(([key, _]) => {
+    return isDataColumnField(instance, key)
+});
 }
 
 export abstract class BaseModel {
@@ -81,21 +76,6 @@ export abstract class BaseModel {
     return keys.filter((key) => isQueryable(instance, key));
   }
 
-  static getDataFieldEntries<T extends BaseModel>(instance: T, updatable : boolean) {
-    const keys = Object.entries(instance);
-    return keys.filter(([key, value]) => {
-      // Include the field if it's a valid data field (checked by isDataField)
-      // If `updatable` is false, also ensure the field is updatable by checking `isNotUpdatable`
-      if (isDataField(instance, key)) {
-          if (updatable) {
-              return !isNotUpdatable(instance, key) && value;
-          }
-          return value;
-      }
-      return false;
-  });
-  }
-
   static getQueryableEntries<T extends BaseModel>(instance: T) {
     const keys = Object.entries(instance);
     return keys.filter(([key, value]) => isQueryable(instance, key) && value);
@@ -107,14 +87,14 @@ export abstract class BaseModel {
   }
 
   // Generate SQL INSERT statement
-  toCreateSQL(tableName: string): string {
+  toCreateRawSQL(tableName: string): string {
     const columns = this.toSQLKeys().join(', ');
     const values = this.toSQLValues().join(', ');
 
     return `INSERT INTO ${tableName} (${columns}) VALUES (${values}) RETURNING *;`;
   }
 
-  static toReadSQL<T extends BaseModel>(tableName: string, datamodel : T): string {
+  static toReadRawSQL<T extends BaseModel>(tableName: string, datamodel : T): string {
 
     const queryableFields = BaseModel.getQueryableEntries(datamodel);
 
@@ -128,12 +108,12 @@ export abstract class BaseModel {
   }
 
   // Generate SQL for UPDATE operation
-  static toUpdateSQL<T extends BaseModel>(
+  static toUpdateRawSQL<T extends BaseModel>(
     tableName: string,
     dataModel : T
   ): string {
 
-    const dataAssignments = BaseModel.getDataFieldEntries(dataModel, true)
+    const dataAssignments = getDataFieldEntries(dataModel, true)
       .map(([key, value]) => `${key} = ${typeof value === "string" ? `'${value}'` : value}`)
       .join(", ");
 
@@ -151,7 +131,7 @@ export abstract class BaseModel {
   }
 
    // Generate SQL for DELETE operation
-   static toDeleteSQL<T extends BaseModel>(tableName: string, datamodel: T, includeOnlyFields: string[] = []): string {
+   static toDeleteRawSQL<T extends BaseModel>(tableName: string, datamodel: T, includeOnlyFields: string[] = []): string {
     const queryableFields = BaseModel.getQueryableEntries(datamodel).filter(([key, value]) => {
       // Include only fields that are in the includeOnlyFields array (if provided)
       return (includeOnlyFields.length === 0 || includeOnlyFields.includes(key));

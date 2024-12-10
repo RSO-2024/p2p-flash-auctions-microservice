@@ -9,14 +9,13 @@ import sql from './database/db';
 const app: Application = express();
 
 
-// Database test connection
+// Startup function
 (async () => {
     try {
-      // Test query
-      const result = await sql`SELECT 'Database connection successful!' AS message`;
-      console.log(result[0].message); // Output: Database connection successful!
+        // Health check
+        console.log("Up and running!");
     } catch (error) {
-      console.error("Error connecting to the database:", error);
+        console.error("Error connecting to the database:", error);
     }
 })();
 
@@ -26,7 +25,7 @@ const swaggerOptions = {
         openapi: '3.0.0',
         info: {
             title: 'Listings Microservice API',
-            version: '0.0.1',
+            version: '0.1.0',
             description: 'API documentation',
         },
     },
@@ -37,8 +36,6 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 
 app.use(express.json());
-
-app.use('/api/listings/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Load routes
 const loadRoutes = (dir: string) => {
@@ -75,6 +72,8 @@ const shutdownGracefully = () => {
       process.exit(1);
     });
 };
+
+app.use('/api/listings/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Listen for termination signals
 // process.on("SIGINT", shutdownGracefully); 
