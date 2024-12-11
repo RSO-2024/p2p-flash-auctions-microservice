@@ -1,9 +1,5 @@
 import { Router } from "express";
-import sql from "../../database/db";
-import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
-import { BaseModel } from "../../models/basemodel";
-import { getTableName } from "../../database/config_db";
 import { P2PAuctionModel } from "../../models/p2pAuctionModel";
 
 const router = Router();

@@ -1,7 +1,6 @@
 import { IsNumber, IsOptional, IsPositive, IsUUID } from "class-validator";
 import { BaseModel, DataColumn, getDataColumn, getDataFieldEntries } from "./basemodel";
 import supabase from "../supabase/client";
-import { P2PAuctionModel } from "./p2pAuctionModel";
 
 export class P2PBidModel extends BaseModel {
 
@@ -47,6 +46,13 @@ export class P2PBidModel extends BaseModel {
         return await supabase.from('profiles').select('*, bid:p2p_bids ( bid_amount, auction_id )').eq('user_id', this.user_id).eq('bid.auction_id', this.auction_id).single();
     }
 
+     
+        
+    /**
+     * Upsert the amount of bid tokens
+     * Here we assume that the user has enough credits to bid with
+     * When the bid is completed, we also update the credits in the table
+     */
     async placeBid(authToken : string, bidData : any) {
 
         // User already bid on this auction
@@ -67,9 +73,7 @@ export class P2PBidModel extends BaseModel {
             'Authorization', `${authToken}`
         );
 
-        // Upsert the amount of bid tokens
-        // Here we assume that the user has enough credits to bid with
-        // When the bid is completed, we also update the credits in the table
+        
 
         //return await supabase.from(P2PBidModel.TABLE_NAME).upsert({... Object.fromEntries(getDataFieldEntries(this)), 'updated_at': new Date().toISOString()}, {
         //    onConflict: 'auction_id, user_id'
