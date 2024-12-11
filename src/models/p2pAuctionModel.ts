@@ -11,6 +11,7 @@ export class P2PAuctionModel extends BaseModel {
   // Data fields
   @DataColumn('auction_id')
   @IsOptional()
+  @IsUUID()
   auction_id?: number;
 
   @DataColumn('listing_id')
