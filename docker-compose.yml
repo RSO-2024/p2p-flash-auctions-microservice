@@ -8,6 +8,6 @@ services:
     ports:
       - "3000:3000"
     image: registry.digitalocean.com/clutchbids-registry/p2p-flash-auctions:latest
-    container_name: p2p-listings
+    container_name: p2p-flash-auctions
     env_file:
       - .env
