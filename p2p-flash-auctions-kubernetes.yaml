@@ -2,22 +2,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: p2p-listings-deployment
+  name: p2p-flash-auctions-deployment
   labels:
-    app: p2p-listings
+    app: p2p-flash-auctions
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: p2p-listings
+      app: p2p-flash-auctions
   template:
     metadata:
       labels:
-        app: p2p-listings
+        app: p2p-flash-auctions
     spec:
       containers:
-        - name: p2p-listings
-          image: registry.digitalocean.com/clutchbids-registry/p2p-listings:latest
+        - name: p2p-flash-auctions
+          image: registry.digitalocean.com/clutchbids-registry/p2p-flash-auctions:latest
           ports:
             - containerPort: 3000
           resources:
@@ -29,7 +29,7 @@ spec:
               cpu: "500m"
           envFrom:
             - secretRef:
-                name: p2p-listings-secrets
+                name: p2p-flash-auctions-secrets
       imagePullSecrets:
         - name: clutchbids-registry
 
@@ -38,10 +38,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: p2p-listings-service
+  name: p2p-flash-auctions-service
 spec:
   selector:
-    app: p2p-listings
+    app: p2p-flash-auctions
   ports:
     - protocol: TCP
       port: 80

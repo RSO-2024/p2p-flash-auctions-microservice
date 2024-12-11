@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    image: registry.digitalocean.com/clutchbids-registry/p2p-listings:latest
+    image: registry.digitalocean.com/clutchbids-registry/p2p-flash-auctions:latest
     container_name: p2p-listings
     env_file:
       - .env

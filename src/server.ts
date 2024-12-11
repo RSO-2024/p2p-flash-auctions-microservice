@@ -3,8 +3,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import fs from 'fs';
 import path from 'path';
-
-import sql from './database/db';
+import auctionJob from './cronjobs/flashAuctionCronJob';
 
 const app: Application = express();
 
@@ -14,8 +13,13 @@ const app: Application = express();
     try {
         // Health check
         console.log("Up and running!");
+
+        // Start the cron job
+        auctionJob.start();
+        console.log('Auction cleanup cron job scheduled.');
+        
     } catch (error) {
-        console.error("Error connecting to the database:", error);
+        console.error("Error setting up the microservice.", error);
     }
 })();
 
@@ -24,7 +28,7 @@ const swaggerOptions = {
     swaggerDefinition: {
         openapi: '3.0.0',
         info: {
-            title: 'Listings Microservice API',
+            title: 'Flash Auctions Microservice API',
             version: '0.1.0',
             description: 'API documentation',
         },
@@ -53,27 +57,13 @@ const loadRoutes = (dir: string) => {
                 .replace(path.join(__dirname, 'routes'), '')
                 .replace(/\\/g, '/');
             
-            app.use(`/api/listings${relativePath}`, route);
+            app.use(`/api/flash-auctions${relativePath}`, route);
         }
     });
 };
 loadRoutes(path.join(__dirname, 'routes'));
 
-// Setup graceful shutdown for PostgreSQL
-const shutdownGracefully = () => {
-    console.log("Shutting down gracefully...");
-  
-    // Close DB connection
-    sql.end().then(() => {
-      console.log("Database connection closed.");
-      process.exit(0);
-    }).catch((err) => {
-      console.error("Error closing DB connection", err);
-      process.exit(1);
-    });
-};
-
-app.use('/api/listings/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use('/api/flash-auctions/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Listen for termination signals
 // process.on("SIGINT", shutdownGracefully); 

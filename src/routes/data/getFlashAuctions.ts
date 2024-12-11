@@ -4,17 +4,18 @@ import { ListingModel } from "../../models/listingmodel";
 import { validateOrReject } from "class-validator";
 import { BaseModel } from "../../models/basemodel";
 import { getTableName } from "../../database/config_db";
+import { P2PAuctionModel } from "../../models/p2pAuctionModel";
 
 const router = Router();
 
 /**
  * @swagger
- * /listings/data:
+ * /flash-auctions/data:
  *   get:
  *     tags:
- *      - Listings
- *     summary: Gets a listing based on provided queries. 
- *     description: Returns data with the results.
+ *      - Flash Auctions
+ *     summary: Gets auctions based on provided queries. 
+ *     description: Returns flash auctions with the results.
  *     requestBody:
  *       required: true
  *       content:
@@ -26,22 +27,18 @@ const router = Router();
  *                type: object
  *                description: Query the API with these queryable fields
  *                properties:
- *                 title:
- *                   type: string
- *                   description: Search by the title string
- *                 startFirstReg:
- *                   type: string
- *                   format: date
- *                   example: DD/MM/YYYY
- *                   description: Start date of the first registration.
- *                 endFirstReg:
- *                   type: string
- *                   format: date
- *                   example: DD/MM/YYYY
- *                   description: End date of the first registration.
+ *                 auction_id:
+ *                   type: number
+ *                   description: Search by the id of the auction
+ *                 is_flash:
+ *                   type: boolean
+ *                   description: Search by flash auctions
+ *                 has_ended:
+ *                   type: boolean
+ *                   description: Search by inactive flash auctions
  *     responses:
- *       201:
- *         description: Returned listings.
+ *       200:
+ *         description: Returned auctions.
  *       400:
  *         description: Invalid request data.
  *       500:
@@ -50,12 +47,12 @@ const router = Router();
 router.get("/", async (req, res) => {
   try {
     // Map request body to the ListingModel class
-    const listingData : ListingModel = new ListingModel();
+    const auctionData : P2PAuctionModel = new P2PAuctionModel();
 
     // Prepare queryable data
-    listingData.prepareQueryData(req.body.query);
+    auctionData.prepareQueryData(req.body.query);
 
-    const { data, error } = await listingData.fetchData();
+    const { data, error } = await auctionData.getAuctions();
 
     if (error) {
       res.status(400).json({
@@ -69,7 +66,7 @@ router.get("/", async (req, res) => {
     const validatedResults = [];
     
     for (const resultData of data) {
-      const validatedResult : ListingModel = Object.assign(new ListingModel(), resultData);
+      const validatedResult : P2PAuctionModel = Object.assign(new P2PAuctionModel(), resultData);
       validatedResult.parseData();
 
       await validateOrReject(validatedResult);
@@ -83,7 +80,7 @@ router.get("/", async (req, res) => {
       data: validatedResults,
     });
   } catch (error) {
-    console.error("Error creating listing:", error);
+    console.error("Error collecting auctions:", error);
     res.status(500).json({
       status: "error",
       message: `Internal server error. ${error}`,

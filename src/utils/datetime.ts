@@ -35,3 +35,23 @@ export function validateDateRange(startDate: string, endDate: string): boolean {
 
     return true;
 }
+
+export function validateISODateRange(start_time: string, end_time: string): boolean {
+  // Parse the provided ISO strings into Date objects
+  const startTime = new Date(start_time);
+  const endTime = new Date(end_time);
+  const now = new Date(); // Get the current time
+
+  // Check if either start_time or end_time is in the past
+  if (startTime < now || endTime < now) {
+    return false;
+  }
+
+  // Check if end_time is before start_time
+  if (endTime < startTime) {
+    return false;
+  }
+
+  // All checks passed
+  return true;
+}
