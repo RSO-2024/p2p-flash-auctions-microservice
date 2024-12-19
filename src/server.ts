@@ -1,8 +1,13 @@
+// Sentry import
+import "./sentry/instrument";
+
 import express, { Application, Request, Response } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import fs from 'fs';
 import path from 'path';
+import * as Sentry from "@sentry/node";
+import { configManager } from './config/configmanager';
 import auctionJob from './cronjobs/flashAuctionCronJob';
 
 const app: Application = express();
@@ -10,16 +15,25 @@ const app: Application = express();
 
 // Startup function
 (async () => {
-    try {
-        // Health check
-        console.log("Up and running!");
 
-        // Start the cron job
+    var config = configManager.getConfig();
+
+    try {
+        // Initial health check
+        console.log(`Up and running in the environment: ${process.env.NODE_ENV}.`);
+        
+        if (config.NODE_ENV === "prod") {
+            console.log("Testing Sentry on prod...")
+            Sentry.captureMessage("Microservice running on production!")
+        }
         auctionJob.start();
         console.log('Auction cleanup cron job scheduled.');
         
     } catch (error) {
-        console.error("Error setting up the microservice.", error);
+        console.error("Error starting the microservice:", error);
+        if (config.NODE_ENV === "prod") {
+            Sentry.captureException(error);
+        }
     }
 })();
 
@@ -64,23 +78,6 @@ const loadRoutes = (dir: string) => {
 loadRoutes(path.join(__dirname, 'routes'));
 
 app.use('/api/flash-auctions/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
-// Listen for termination signals
-// process.on("SIGINT", shutdownGracefully); 
-// process.on("SIGTERM", shutdownGracefully);
-// process.on("uncaughtException", (err) => {
-//   console.error("Uncaught exception", err);
-//   shutdownGracefully();
-// });
-// process.on("unhandledRejection", (reason, promise) => {
-//   console.error("Unhandled Rejection", reason);
-//   shutdownGracefully();
-// });
-
-// A function that uses authentication middleware
-//app.get('/admin-resource', verifyJWT, requireRole('admin'), (req, res: Response) => {
-//    res.send('Access granted to admin');
-//});
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Hello World!');

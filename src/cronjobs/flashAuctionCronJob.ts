@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const auctionJob = new CronJob('*/10 * * * *', async () => {
+const auctionJob = new CronJob("0 * * * *", async () => {
 
     try {
         var currentTime = new Date().toISOString();

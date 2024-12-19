@@ -7,7 +7,7 @@ const router = Router();
 
 /**
  * @swagger
- * /flash-auctions/bid:
+ * /bid:
  *   post:
  *     tags:
  *      - Bidding

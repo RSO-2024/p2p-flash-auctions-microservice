@@ -6,7 +6,7 @@ const router = Router();
 
 /**
  * @swagger
- * /flash-auctions/data:
+ * /data:
  *   get:
  *     tags:
  *      - Flash Auctions
