@@ -1,4 +1,17 @@
-# Mikrostoritev: P2P Price auctions
+# Mikrostoritev: P2P Flash auctions
+
+## Struktura
+
+Vsa izvorna koda mikrostoritve se nahaja v `src` mapi:
+
+- `config` - Implementacija za dinamično konfiguracijo aplikacije
+- `middleware` - Funkcije za preverjanje avtorizacije
+- `models` - Podatkovni modeli
+- `sentry` - Implementacija za `sentry.io`
+- `supabase` - Implementacija za dostop do podatkovne baze
+- `utils` - Pomožne funkcije
+- `routes` - Končne točke, ki so razporejene v posamezne podmape
+- `server.ts` - Glavna datoteka za zagon aplikacije
 
 ## Lokalna nastavitev
 
