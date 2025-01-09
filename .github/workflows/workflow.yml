@@ -52,7 +52,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          name: RSO-2024/clutchbids-k8s
+          repository: RSO-2024/clutchbids-k8s
           token: ${{ secrets.RSO_ACCESS_TOKEN }}
           path: .
 
