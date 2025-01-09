@@ -64,7 +64,11 @@ jobs:
       - name: Deploy with Helm
         run: |
           helm upgrade --install $MICROSERVICE_NAME-chart ./$MICROSERVICE_NAME-chart --values ./$MICROSERVICE_NAME-chart/values-prod.yaml
+        env:
+          MICROSERVICE_NAME: ${{ env.MICROSERVICE_NAME }}
 
       # Step 7: Verify deployment
       - name: Verify deployment
         run: kubectl rollout status deployment/$MICROSERVICE_NAME-deployment
+        env:
+          MICROSERVICE_NAME: ${{ env.MICROSERVICE_NAME }}
