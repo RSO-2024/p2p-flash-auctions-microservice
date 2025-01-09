@@ -1,4 +1,4 @@
-name: CI K8s Clutchbids - P2P Flash auctions microservice
+name: CI - workflow
 
 on:
   push:
