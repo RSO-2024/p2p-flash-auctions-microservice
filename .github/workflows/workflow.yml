@@ -1,0 +1,68 @@
+# This workfow shows how to build a Docker image, tag and push it to DigitalOcean Container Registry, and
+# deploy the application on a DIgitalOcean Kubernetes cluster. For description to the entire worklow, 
+# see www.digitalocean.com/docs/kubernetes/how-to/deploy-using-github-actions.
+
+name: CI/CD K8s Clutchbids - P2P Flash auctions microservice
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push request on the main branch for changes in the specified paths.
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker-compose.yml'
+      - 'Dockerfile'
+      - '.github/workflows/**'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel.
+jobs:
+  # This workflow contains a single job called "build".
+  build:
+    # The type of runner that the job will run on.
+    runs-on: ubuntu-latest
+    
+    # Steps represent a sequence of tasks that will be executed as part of the job
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Install doctl
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4.2.0
+
+      # Step 3: Log in to DigitalOcean Container Registry
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 1200
+
+      # Step 4: Build and push Docker image with Docker Compose
+      - name: Build and push Docker image with Docker Compose
+        run: |
+          docker-compose build
+          docker-compose push
+
+      # Step 5: Clone Helm chart repository
+      - name: Clone Helm chart repository
+        run: |
+          git clone https://github.com/RSO-2024/clutchbids-k8s
+          cd clutchbids-k8s
+
+      # Step 5: Save DigitalOcean kubeconfig with short-lived credentials
+      - name: Save DigitalOcean kubeconfig
+        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 k8s-clutchbids
+
+      # Step 6: Helm upgrade and deploy
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install $MICROSERVICE_NAME-chart ./$MICROSERVICE_NAME-chart --values ./$MICROSERVICE_NAME-chart/values-prod.yaml
+
+      # Step 7: Verify deployment
+      - name: Verify deployment
+        run: kubectl rollout status deployment/$MICROSERVICE_NAME-deployment
