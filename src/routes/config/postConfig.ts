@@ -16,7 +16,7 @@ const router = Router();
  */
 router.post('/reload', (req, res) => {
     configManager.reloadConfig();
-    res.send({ message: 'Configuration reloaded', config: configManager.getConfig() });
+    res.status(200).send({ message: 'Configuration reloaded', config: configManager.getConfig() });
 });
 
 export default router;

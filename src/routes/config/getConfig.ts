@@ -14,7 +14,7 @@ const router = Router();
  *          description: Returns current configuration
  */
 router.get("/", (req, res) => {
-    res.json({ config: configManager.getConfig() });
+    res.status(200).json({ config: configManager.getConfig() });
 });
 
 export default router;

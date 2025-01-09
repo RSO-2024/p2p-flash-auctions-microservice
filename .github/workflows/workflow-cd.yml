@@ -1,19 +1,11 @@
-# This workfow shows how to build a Docker image, tag and push it to DigitalOcean Container Registry, and
-# deploy the application on a DIgitalOcean Kubernetes cluster. For description to the entire worklow, 
-# see www.digitalocean.com/docs/kubernetes/how-to/deploy-using-github-actions.
-
-name: CI/CD K8s Clutchbids - P2P Flash auctions microservice
+name: CD - workflow
 
 # Controls when the action will run.
 on:
-  # Triggers the workflow on push request on the main branch for changes in the specified paths.
-  push:
-    branches:
-      - main
-    paths:
-      - 'docker-compose.yml'
-      - 'Dockerfile'
-      - '.github/workflows/**'
+ workflow_run:
+    workflows: ["CI - workflow"]
+    types:
+      - completed
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel.
 jobs:
