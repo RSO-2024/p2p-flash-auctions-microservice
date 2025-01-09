@@ -48,11 +48,12 @@ jobs:
           docker compose build
           docker compose push
 
-      # Step 5: Clone Helm chart repository
-      - name: Clone Helm chart repository
-        run: |
-          git clone https://github.com/RSO-2024/clutchbids-k8s
-          cd clutchbids-k8s
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          name: RSO-2024/clutchbids-k8s
+          token: ${{ secrets.RSO_ACCESS_TOKEN }}
 
       # Step 5: Save DigitalOcean kubeconfig with short-lived credentials
       - name: Save DigitalOcean kubeconfig
