@@ -43,10 +43,10 @@ jobs:
         run: doctl registry login --expiry-seconds 1200
 
       # Step 4: Build and push Docker image with Docker Compose
-#      - name: Build and push Docker image with Docker Compose
-#        run: |
-#          docker compose build
-#          docker compose push
+      - name: Build and push Docker image with Docker Compose
+        run: |
+          docker compose build
+          docker compose push
 
       # Step 1: Checkout repository
       - name: Checkout repository
