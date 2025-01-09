@@ -45,8 +45,8 @@ jobs:
       # Step 4: Build and push Docker image with Docker Compose
       - name: Build and push Docker image with Docker Compose
         run: |
-          docker-compose build
-          docker-compose push
+          docker compose build
+          docker compose push
 
       # Step 5: Clone Helm chart repository
       - name: Clone Helm chart repository
