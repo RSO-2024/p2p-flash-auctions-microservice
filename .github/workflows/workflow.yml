@@ -27,7 +27,7 @@ jobs:
     steps:
       # Step 1: Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step 2: Install doctl
       - name: Install doctl
@@ -50,11 +50,12 @@ jobs:
 
       # Step 1: Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: RSO-2024/clutchbids-k8s
           token: ${{ secrets.RSO_ACCESS_TOKEN }}
           path: .
+          ref: main
 
       # Step 5: Save DigitalOcean kubeconfig with short-lived credentials
       - name: Save DigitalOcean kubeconfig
