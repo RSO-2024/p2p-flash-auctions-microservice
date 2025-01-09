@@ -54,7 +54,7 @@ jobs:
         with:
           repository: RSO-2024/clutchbids-k8s
           token: ${{ secrets.RSO_ACCESS_TOKEN }}
-          path: .
+          ref: main
 
       # Step 5: Save DigitalOcean kubeconfig with short-lived credentials
       - name: Save DigitalOcean kubeconfig
