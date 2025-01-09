@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { validateOrReject } from "class-validator";
 import { P2PAuctionModel } from "../../models/p2pAuctionModel";
+import { configManager } from "../../config/configmanager";
+import { logErrorToSentry } from "../../sentry/instrument";
 
 const router = Router();
 
@@ -51,9 +53,16 @@ router.get("/", async (req, res) => {
     const { data, error } = await auctionData.getAuctions();
 
     if (error) {
+
+      let errorMessage = `Unexpected error occurred. Code: ${error.code}. ${error.message}`
+      
+      // Log to Sentry
+      if (configManager.getConfig().NODE_ENV === "prod") {
+        logErrorToSentry(errorMessage, req);
+      }
       res.status(400).json({
           status: "error",
-          message: `Unexpected error occurred. Code: ${error.code}. ${error.message}`,
+          message: errorMessage,
       });
       return
     }
@@ -77,6 +86,10 @@ router.get("/", async (req, res) => {
     });
   } catch (error) {
     console.error("Error collecting auctions:", error);
+    // Log to Sentry
+    if (configManager.getConfig().NODE_ENV === "prod") {
+      logErrorToSentry(`${error}`, req)
+    }
     res.status(500).json({
       status: "error",
       message: `Internal server error. ${error}`,

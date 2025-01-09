@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload, SigningKeyCallback, VerifyErrors } from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import supabase from '../supabase/client';
+import { configManager } from '../config/configmanager';
+import { logErrorToSentry } from '../sentry/instrument';
 
 // Define custom types for request with user information
 interface AuthenticatedRequest extends Request {
@@ -20,22 +22,44 @@ async function getSigningKey(kid: string): Promise<string> {
 }
 
 export async function authenticateUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authorization token required' });
-    return;
+      res.status(401).json({ error: 'Authorization token required' });
+      return;
+    }
+    const token = authHeader.split(' ')[1];
+    const response = await supabase.auth.getUser(token);
+  
+    if (response.error) {
+
+      let errorMessage = `Authorization token is incorrect. | ${response.error.code}`;
+
+      // Log to Sentry
+      if (configManager.getConfig().NODE_ENV === "prod") {
+        logErrorToSentry(errorMessage, req)
+      }
+      res.status(401).json({ status: response.error.status, error: errorMessage });
+      
+      return;
+    }
+  
+    req.body.user = response.data.user;
+    next();
+  } catch (error) {
+    console.error("Error authenticating the request.")
+
+    // Log to Sentry
+    if (configManager.getConfig().NODE_ENV === "prod") {
+      logErrorToSentry(`${error}`, req)
+    }
+
+    res.status(500).json({
+      status: "error",
+      message: `Error authenticating the user request. ${error}`,
+    });
   }
-  const token = authHeader.split(' ')[1];
-  const response = await supabase.auth.getUser(token);
-
-  if (response.error) {
-    res.status(401).json({ status: response.error.status, error: `Authorization token is incorrect. | ${response.error.code}` });
-    return;
-  }
-
-  req.body.user = response.data.user;
-  next();
 }
 
 // Middleware to verify JWT and enforce authentication

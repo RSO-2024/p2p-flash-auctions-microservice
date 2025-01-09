@@ -9,3 +9,27 @@ Sentry.init({
     nodeProfilingIntegration(),
   ],
 });
+
+export function logErrorToSentry(errorMessage : String, req : any) {
+  const routePath = req.path;
+  const method = req.method;
+  const fullUrl = req.originalUrl;
+
+  const sentryMessage = `
+      ${errorMessage}
+      Route: ${routePath}
+      Method: ${method}
+      Full URL: ${fullUrl}
+  `;
+
+  Sentry.captureMessage(sentryMessage, {
+      level: "error",
+      extra: {
+          routePath,
+          method,
+          fullUrl,
+          query: req.query,
+          body: req.body
+      },
+  });
+}

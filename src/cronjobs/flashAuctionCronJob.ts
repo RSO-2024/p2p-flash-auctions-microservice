@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { CronJob } from 'cron';
 import dotenv from 'dotenv';
+import { configManager } from "../config/configmanager";
+import * as Sentry from "@sentry/node";
 
 dotenv.config();
 
@@ -20,14 +22,29 @@ const auctionJob = new CronJob("0 * * * *", async () => {
         supabaseAdminClient.auth.signOut();
         
         if (error) {
-            console.error(`${currentTime} - [CRON JOB] Error calling process_ended_flash_auctions:`, error);
+
+            let errorMessage = `${currentTime} - [CRON JOB] Error calling process_ended_flash_auctions: ${error}`
+            console.error(errorMessage);
+
+            // Log to Sentry
+            if (configManager.getConfig().NODE_ENV === "prod") {
+                Sentry.captureMessage(errorMessage, "error");
+            }
           } else {
-            console.log(`${currentTime} - [CRON JOB] Flash auctions processed successfully:`, data);
+            console.log(`${currentTime} - [CRON JOB] Flash auctions processed successfully: ${data}`);
           }
 
     } catch (error) {
         var currentTime = new Date().toISOString();
-        console.error(`${currentTime} - [CRON JOB] Unexpected error during auction cleanup job`, error)
+
+        let sentryMessage = `${currentTime} - [CRON JOB] Unexpected error during auction cleanup job: ${error}`
+
+        console.error(sentryMessage)
+
+        // Log to Sentry
+        if (configManager.getConfig().NODE_ENV === "prod") {
+            Sentry.captureMessage(sentryMessage, "error");
+        }
     }
     
 });

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { configManager } from './../../config/configmanager';
 import * as Sentry from "@sentry/node";
+import { logErrorToSentry } from '../../sentry/instrument';
 
 const router = Router();
 
@@ -86,11 +87,11 @@ router.get('/', (req, res) => {
   } catch (e) {
     // Log to Sentry
     if (config.NODE_ENV === "prod") {
-      Sentry.captureException(e);
+      logErrorToSentry(`${e}`, req);
     }
     console.error(e);
     res.status(500).json({
-      status: "success",
+      status: "error",
       message: "Internal server error when checking health.",
     });
   }

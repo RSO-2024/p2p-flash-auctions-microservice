@@ -2,6 +2,8 @@ import { Router } from "express";
 import { authenticateUser } from "../../middleware/authorization";
 import { P2PBidModel } from "../../models/p2pBidModel";
 import { validateOrReject } from "class-validator";
+import { configManager } from "../../config/configmanager";
+import { logErrorToSentry } from "../../sentry/instrument";
 
 const router = Router();
 
@@ -46,15 +48,31 @@ router.post("/", authenticateUser, async (req, res) => {
 
     // Check error and user credits
     if (responseCredits.error) {
+
+      let errorMessage = `Unexpected error occurred. Code: ${responseCredits.error.code}. ${responseCredits.error.message}`;
+
+      // Log to Sentry
+      if (configManager.getConfig().NODE_ENV === "prod") {
+        logErrorToSentry(errorMessage, req)
+      }
+
       res.status(400).json({
         status: "error",
-        message: `Unexpected error occurred. Code: ${responseCredits.error.code}. ${responseCredits.error.message}`,
+        message: errorMessage,
       });
       return
     } else if (responseCredits.data.credits && responseCredits.data.credits < biddingData.bid_amount) {
+
+      let errorMessage = `User does not have enough credits to bid.`;
+
+      // Log to Sentry
+      if (configManager.getConfig().NODE_ENV === "prod") {
+        logErrorToSentry(errorMessage, req)
+      }
+
       res.status(400).json({
         status: "error",
-        message: `User does not have enough credits to bid.`,
+        message: errorMessage,
       });
       return
     }
@@ -63,9 +81,17 @@ router.post("/", authenticateUser, async (req, res) => {
     const responseBid = await biddingData.placeBid(req.headers.authorization!, responseCredits.data);
 
     if (responseBid.error) {
+
+      let errorMessage = `Could not place the bid. Code: ${responseBid.error.code}. ${responseBid.error.message}`;
+      
+      // Log to Sentry
+      if (configManager.getConfig().NODE_ENV === "prod") {
+        logErrorToSentry(errorMessage, req)
+      }
+
       res.status(400).json({
           status: "error",
-          message: `Could not place the bid. Code: ${responseBid.error.code}. ${responseBid.error.message}`,
+          message: errorMessage,
       });
       return
     }
@@ -73,10 +99,17 @@ router.post("/", authenticateUser, async (req, res) => {
     const responseUpdatedCredits = await biddingData.updateUserCredits(req.headers.authorization!, responseCredits.data, current_bid_amount);
 
     if (responseUpdatedCredits.error) {
-      // If this goes wrong, we should probably revoke the bid as well. 
+      let errorMessage = `Could not update the user's credits. Code: ${responseUpdatedCredits.error.code}. ${responseUpdatedCredits.error.message}`
+
+      // If this goes wrong, we should probably revoke the bid as well.
+
+      // Log to Sentry
+      if (configManager.getConfig().NODE_ENV === "prod") {
+        logErrorToSentry(errorMessage, req)
+      }
       res.status(400).json({
         status: "error",
-        message: `Could not update the user's credits. Code: ${responseUpdatedCredits.error.code}. ${responseUpdatedCredits.error.message}`,
+        message: errorMessage,
       });
       return
     }
@@ -90,6 +123,10 @@ router.post("/", authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error("Error placing the bid:", error);
+    // Log to Sentry
+    if (configManager.getConfig().NODE_ENV === "prod") {
+      logErrorToSentry(`${error}`, req)
+    }
     res.status(500).json({
       status: "error",
       message: `Internal server error. ${error}`,

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { P2PAuctionModel } from "../../models/p2pAuctionModel";
 import { authenticateUser } from "../../middleware/authorization";
+import { configManager } from "../../config/configmanager";
+import { logErrorToSentry } from "../../sentry/instrument";
 
 const router = Router();
 
@@ -44,9 +46,17 @@ router.post("/", authenticateUser, async (req, res) => {
     const { data, error } = await auctionData.createFlashAuction(req.headers.authorization!);
 
     if (error) {
+
+      let errorMessage = `Unexpected error occurred. Code: ${error.code}. ${error.message}`
+      
+      // Log to Sentry
+      if (configManager.getConfig().NODE_ENV === "prod") {
+        logErrorToSentry(errorMessage, req);
+      }
+
       res.status(400).json({
           status: "error",
-          message: `Unexpected error occurred. Code: ${error.code}. ${error.message}`,
+          message: errorMessage,
       });
       return
     }
@@ -60,6 +70,10 @@ router.post("/", authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating auction:", error);
+    // Log to Sentry
+    if (configManager.getConfig().NODE_ENV === "prod") {
+      logErrorToSentry(`${error}`, req)
+    }
     res.status(500).json({
       status: "error",
       message: `Internal server error. ${error}`,
