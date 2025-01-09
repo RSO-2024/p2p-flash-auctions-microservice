@@ -4,6 +4,7 @@
 
 Vsa izvorna koda mikrostoritve se nahaja v `src` mapi:
 
+- `__test__` - Testni primeri
 - `config` - Implementacija za dinamično konfiguracijo aplikacije
 - `middleware` - Funkcije za preverjanje avtorizacije
 - `models` - Podatkovni modeli
@@ -26,6 +27,10 @@ Produkcijsko okolje
 `npm run start`
 
 Okoljske spremenljivke se nahajajo v datoteki `.env`.
+
+## CI / CD
+
+CI/CD se avtomatično sproži ob spremembah v veji `main` v `src/` direktoriju.
 
 ## Nastavitev v oblak
 
@@ -76,7 +81,7 @@ Za zdravje mikrostoritve so na voljo naslednje končne točke:
 
 ### Monitoring napak mikrostoritve
 
-Za spremnljanje napak mikrostoritve je nastavljen [sentry.io](https://sentry.io/welcome/), ki javlja morebitne napake v določenih delih mikrostoritve v produkcijskem okolju. Na nadzorni plošči je možen ogled vseh napak.
+Za spremljanje napak mikrostoritve je nastavljen [sentry.io](https://sentry.io/welcome/), ki javlja morebitne napake v določenih delih mikrostoritve v produkcijskem okolju. Na nadzorni plošči je možen ogled vseh napak.
 
 ## Dokumentacija API
 
